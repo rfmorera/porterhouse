@@ -138,6 +138,7 @@ class SyncService:
     def _convert(self, item: ItemBalances, warnings: list):
         kept = []
         converted = 0
+        total = len(item.balances)
         for balance in item.balances:
             if balance.currency == "UYU":
                 try:
@@ -168,6 +169,13 @@ class SyncService:
         item.balances = kept
         if converted:
             self.log(f"{item.name}: {converted} saldo(s) convertidos de UYU a USD")
+        if total and not kept:
+            message = (
+                f"{item.name}: ninguno de sus {total} saldos tiene cotización, "
+                "el ítem no se crea ni se actualiza hasta resolver la cotización UYU/USD"
+            )
+            warnings.append(message)
+            self.log(f"[aviso] {message}")
 
     def _diff(self, item: ItemBalances) -> ItemPlan:
         existing = self.ledger.get(item.key)

@@ -7,7 +7,7 @@ from porterhouse.config import Settings, resolve_environment
 from porterhouse.dtos import SyncReport
 from porterhouse.ledger import Ledger
 from porterhouse.rates import RateService
-from porterhouse.sheet_specs import load_sheet_specs
+from porterhouse.sheet_specs import load_sheet_config
 from porterhouse.sync_service import SyncService
 from porterhouse.workbook_reader import WorkbookReader
 
@@ -34,10 +34,14 @@ def run_sync(
         raise MissingToken(
             "Falta el JWT: definí MONDAYCALL_JWT en el entorno o pasalo en el formulario"
         )
-    specs = load_sheet_specs(settings.sheets_path)
+    specs, ignored = load_sheet_config(settings.sheets_path)
     reader = WorkbookReader(workbook_path, today or date.today())
     log(f"Archivo: {Path(workbook_path).name} ({len(reader.sheet_names)} hojas)")
-    unknown = [name for name in reader.sheet_names if name not in {spec.sheet for spec in specs}]
+    mapped = {spec.sheet for spec in specs}
+    skipped = [name for name in reader.sheet_names if name in ignored]
+    if skipped:
+        log(f"Hojas excluidas por sheets.json: {', '.join(skipped)}")
+    unknown = [name for name in reader.sheet_names if name not in mapped and name not in ignored]
     if unknown:
         log(f"[aviso] hojas sin mapeo en sheets.json, ignoradas: {', '.join(unknown)}")
     log(f"Entorno: {environment} ({api_url})")

@@ -113,6 +113,36 @@ def test_a_changed_amount_is_sent_again(tmp_path, workbook_path, specs_path, tod
     ]
 
 
+def test_an_item_without_any_rate_is_reported_and_not_created(tmp_path, workbook_path, specs_path, today):
+    lines = []
+    rates = RateService(tmp_path / "rates.json", fetchers=[lambda day: None])
+    service = SyncService(load_sheet_specs(specs_path), rates, Ledger(tmp_path / "ledger.json"), lines.append)
+    client = FakeClient()
+
+    plan = service.plan(WorkbookReader(workbook_path, today))
+    service.apply(plan, client, dry_run=False)
+
+    assert any("Pesos Rafael: ninguno de sus 2 saldos tiene cotización" in line for line in lines)
+    assert [payload["name"] for payload in client.created] == ["Efectivo", "Inversión Gletir", "Inversión Binance"]
+
+
+def test_ignored_sheets_are_not_mapped(tmp_path, workbook_path, specs_path):
+    settings = Settings(
+        jwt="",
+        environment="dev",
+        api_url_override="",
+        ledger_dir=tmp_path,
+        rates_path=tmp_path / "rates.json",
+        sheets_path=specs_path,
+    )
+    lines = []
+
+    run_sync(workbook_path, settings, log=lines.append, dry_run=True, rate_override=40.0, today=date(2026, 11, 5))
+
+    assert any(line == "Hojas excluidas por sheets.json: Capital One" for line in lines)
+    assert not any("Capital One" in line and "aviso" in line for line in lines)
+
+
 def test_dry_run_sends_nothing(tmp_path, workbook_path, specs_path, today):
     lines = []
     service, _ledger = _service(tmp_path, specs_path, lines.append)

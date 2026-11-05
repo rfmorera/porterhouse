@@ -61,7 +61,9 @@ para que la próxima corrida (en cualquier máquina) sepa qué ya se envió.
 ## Cómo se interpreta el Excel
 
 Cada hoja se mapea en `sheets.json` a un ítem manual (nombre, `type`,
-`subtype`, moneda, ícono). Dentro de la hoja se busca la fila con los
+`subtype`, moneda, ícono). Las hojas listadas en `ignore` (hoy `Fifth Third` y
+`Capital One`, cuentas que ya están conectadas en la app) se saltean sin aviso;
+cualquier otra hoja sin mapeo se ignora con un aviso en el log. Dentro de la hoja se busca la fila con los
 encabezados `Nombre | Monto | Descripcion | Fecha`; las filas siguientes son los
 datos.
 
@@ -88,6 +90,10 @@ datos.
   (default `0,2,1`) lista los grupos del web service que se prueban en orden.
 - **Supuestos** que conviene revisar en `sheets.json`: `Efectivo` y
   `Prestamos` se tratan como USD; `Mercado Pago` como UYU.
+- **Tarjetas** (`Credito-Santander`, `Credito-BBVA`): son pasivos
+  (`credit` / `credit card`); el monto es lo usado de la línea, es decir la
+  deuda. Como están en UYU, si ninguna fecha consigue cotización el ítem no se
+  crea y el log lo dice con un aviso "ninguno de sus N saldos tiene cotización".
 
 Filas que se omiten con un aviso en el log: sin fecha, con fecha futura, con
 fecha inválida (año menor a 2000 o texto no reconocido, p. ej. `31/08/204`), o

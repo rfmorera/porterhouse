@@ -91,26 +91,6 @@
       "note": "Excel: Credito-BBVA (UYU convertido a USD)"
     },
     {
-      "sheet": "Fifth Third",
-      "mode": "balance",
-      "name": "Fifth Third",
-      "type": "depository",
-      "subtype": "checking",
-      "currency": "USD",
-      "icon": "bank",
-      "note": "Excel: Fifth Third"
-    },
-    {
-      "sheet": "Capital One",
-      "mode": "balance",
-      "name": "Capital One",
-      "type": "credit",
-      "subtype": "credit card",
-      "currency": "USD",
-      "icon": "card",
-      "note": "Excel: Capital One"
-    },
-    {
       "sheet": "Inversiones",
       "mode": "cumulative",
       "name": "Inversión {nombre}",
@@ -120,8 +100,15 @@
       "icon": "investment",
       "note": "Aportes acumulados a {nombre} (Excel: Inversiones)",
       "overrides": {
-        "Binance": {"subtype": "crypto exchange", "icon": "crypto"}
+        "Binance": {
+          "subtype": "crypto exchange",
+          "icon": "crypto"
+        }
       }
     }
+  ],
+  "ignore": [
+    "Fifth Third",
+    "Capital One"
   ]
 }

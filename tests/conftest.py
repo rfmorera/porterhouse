@@ -47,6 +47,7 @@ def workbook_path(tmp_path):
                 ("Estado", 69370.45, None, datetime(2023, 2, 10)),
                 ("Estado", 40000, None, datetime(2023, 3, 10)),
             ],
+            "Capital One": [("Estado", 100, None, datetime(2025, 1, 1))],
             "Inversiones": [
                 ("Gletir", 2000, None, datetime(2025, 3, 7)),
                 ("Gletir", 5000, None, datetime(2025, 3, 12)),
@@ -73,7 +74,8 @@ def specs_path(tmp_path):
      "overrides": {"Binance": {"subtype": "crypto exchange", "icon": "crypto"}}},
     {"sheet": "No existe", "mode": "balance", "name": "Nada", "type": "depository",
      "subtype": "checking", "currency": "USD", "icon": "bank"}
-  ]
+  ],
+  "ignore": ["Capital One"]
 }
 """,
         encoding="utf-8",
