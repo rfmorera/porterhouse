@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 
 from porterhouse.api_client import ApiError
-from porterhouse.config import Settings
+from porterhouse.config import Settings, resolve_environment
 from porterhouse.dtos import RateQuote
 from porterhouse.ledger import Ledger
 from porterhouse.rates import RateService
@@ -125,6 +125,25 @@ def test_dry_run_sends_nothing(tmp_path, workbook_path, specs_path, today):
     assert report.revisions_skipped == 8
 
 
+def test_environment_picks_api_url_and_its_own_ledger(tmp_path, specs_path):
+    settings = Settings(
+        jwt="",
+        environment="dev",
+        api_url_override="",
+        ledger_dir=tmp_path,
+        rates_path=tmp_path / "rates.json",
+        sheets_path=specs_path,
+    )
+
+    assert settings.api_url_for("dev") == "https://api-dev.moneycall.io"
+    assert settings.api_url_for("prod") == "https://api.moneycall.io"
+    assert settings.ledger_path_for("prod") == tmp_path / "ledger.prod.json"
+    assert resolve_environment("") == "dev"
+    assert resolve_environment("PROD") == "prod"
+    with pytest.raises(ValueError):
+        resolve_environment("staging")
+
+
 def test_forbidden_stops_the_run(tmp_path, workbook_path, specs_path, today):
     lines = []
     service, _ledger = _service(tmp_path, specs_path, lines.append)
@@ -139,8 +158,9 @@ def test_forbidden_stops_the_run(tmp_path, workbook_path, specs_path, today):
 def test_runner_requires_a_token_unless_dry_run(tmp_path, workbook_path, specs_path):
     settings = Settings(
         jwt="",
-        api_url="https://example.test",
-        ledger_path=tmp_path / "ledger.json",
+        environment="dev",
+        api_url_override="https://example.test",
+        ledger_dir=tmp_path,
         rates_path=tmp_path / "rates.json",
         sheets_path=specs_path,
     )
@@ -153,3 +173,22 @@ def test_runner_requires_a_token_unless_dry_run(tmp_path, workbook_path, specs_p
     )
 
     assert report.revisions_skipped == 8
+
+
+def test_environment_picks_api_url_and_its_own_ledger(tmp_path, specs_path):
+    settings = Settings(
+        jwt="",
+        environment="dev",
+        api_url_override="",
+        ledger_dir=tmp_path,
+        rates_path=tmp_path / "rates.json",
+        sheets_path=specs_path,
+    )
+
+    assert settings.api_url_for("dev") == "https://api-dev.moneycall.io"
+    assert settings.api_url_for("prod") == "https://api.moneycall.io"
+    assert settings.ledger_path_for("prod") == tmp_path / "ledger.prod.json"
+    assert resolve_environment("") == "dev"
+    assert resolve_environment("PROD") == "prod"
+    with pytest.raises(ValueError):
+        resolve_environment("staging")

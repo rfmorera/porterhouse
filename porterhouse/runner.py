@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from porterhouse.api_client import MondayCallClient
-from porterhouse.config import Settings
+from porterhouse.config import Settings, resolve_environment
 from porterhouse.dtos import SyncReport
 from porterhouse.ledger import Ledger
 from porterhouse.rates import RateService
@@ -24,7 +24,11 @@ def run_sync(
     dry_run: bool = False,
     rate_override: Optional[float] = None,
     today: Optional[date] = None,
+    environment: str = "",
 ) -> SyncReport:
+    environment = resolve_environment(environment or settings.environment)
+    api_url = settings.api_url_for(environment)
+    ledger_path = settings.ledger_path_for(environment)
     token = (token or settings.jwt).strip()
     if not token and not dry_run:
         raise MissingToken(
@@ -36,8 +40,9 @@ def run_sync(
     unknown = [name for name in reader.sheet_names if name not in {spec.sheet for spec in specs}]
     if unknown:
         log(f"[aviso] hojas sin mapeo en sheets.json, ignoradas: {', '.join(unknown)}")
-    ledger = Ledger(settings.ledger_path)
-    log(f"Registro local: {settings.ledger_path} ({len(ledger.items)} ítem(s) ya enviados)")
+    log(f"Entorno: {environment} ({api_url})")
+    ledger = Ledger(ledger_path)
+    log(f"Registro local: {ledger_path.name} ({len(ledger.items)} ítem(s) ya enviados)")
     rates = RateService(settings.rates_path, override=rate_override)
     service = SyncService(specs, rates, ledger, log)
     plan = service.plan(reader)
@@ -46,8 +51,7 @@ def run_sync(
     log(f"Revisiones pendientes de envío: {plan.pending_count}")
     client = None
     if not dry_run:
-        client = MondayCallClient(settings.api_url, token)
-        log(f"API: {settings.api_url}")
+        client = MondayCallClient(api_url, token)
     else:
         log("Modo simulación: no se envía nada a la API")
     report = service.apply(plan, client, dry_run)

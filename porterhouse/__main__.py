@@ -2,7 +2,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from porterhouse.config import load_settings
+from porterhouse.config import ENVIRONMENTS, load_settings
 from porterhouse.runner import MissingToken, run_sync
 
 
@@ -14,6 +14,7 @@ def main(argv=None) -> int:
     sync.add_argument("workbook", type=Path)
     sync.add_argument("--dry-run", action="store_true")
     sync.add_argument("--token", default="")
+    sync.add_argument("--env", choices=sorted(ENVIRONMENTS), default=None, help="dev o prod (default: MONDAYCALL_ENV o dev)")
     sync.add_argument("--rate", type=float, default=None, help="Fuerza una cotización UYU por USD")
 
     serve = commands.add_parser("serve", help="Levanta la interfaz web")
@@ -35,6 +36,7 @@ def main(argv=None) -> int:
             token=args.token,
             dry_run=args.dry_run,
             rate_override=args.rate,
+            environment=args.env or "",
         )
     except MissingToken as error:
         print(f"[error] {error}", file=sys.stderr)

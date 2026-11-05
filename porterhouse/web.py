@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from porterhouse.config import ROOT, load_settings
+from porterhouse.config import ENVIRONMENTS, ROOT, load_settings, resolve_environment
 from porterhouse.ledger import Ledger
 from porterhouse.runner import MissingToken, run_sync
 
@@ -26,12 +26,18 @@ def index():
 @app.get("/api/status")
 def status():
     settings = load_settings()
-    ledger = Ledger(settings.ledger_path)
+    environments = {}
+    for name in ENVIRONMENTS:
+        ledger = Ledger(settings.ledger_path_for(name))
+        environments[name] = {
+            "api_url": settings.api_url_for(name),
+            "ledger_items": len(ledger.items),
+            "ledger_revisions": sum(len(item.revisions) for item in ledger.items.values()),
+        }
     return {
-        "api_url": settings.api_url,
+        "default_environment": settings.environment,
+        "environments": environments,
         "has_env_token": settings.has_token,
-        "ledger_items": len(ledger.items),
-        "ledger_revisions": sum(len(item.revisions) for item in ledger.items.values()),
     }
 
 
@@ -41,7 +47,12 @@ async def sync(
     token: str = Form(""),
     dry_run: bool = Form(False),
     rate: Optional[str] = Form(None),
+    environment: str = Form(""),
 ):
+    try:
+        environment = resolve_environment(environment or load_settings().environment)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
     if not _running.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="Ya hay una sincronización en curso")
     workdir = Path(tempfile.mkdtemp(prefix="porterhouse-"))
@@ -60,6 +71,7 @@ async def sync(
                 token=token,
                 dry_run=dry_run,
                 rate_override=rate_override,
+                environment=environment,
             )
         except MissingToken as error:
             lines.put(f"[error] {error}")
