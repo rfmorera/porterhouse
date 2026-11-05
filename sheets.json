@@ -1,0 +1,127 @@
+{
+  "sheets": [
+    {
+      "sheet": "Prestamos",
+      "mode": "cumulative",
+      "name": "Préstamo {nombre}",
+      "type": "investment",
+      "subtype": "other",
+      "currency": "USD",
+      "icon": "briefcase",
+      "note": "Préstamo a {nombre}, pendiente de cobro (Excel: Prestamos)"
+    },
+    {
+      "sheet": "Efectivo",
+      "mode": "balance",
+      "name": "Efectivo",
+      "type": "depository",
+      "subtype": "cash management",
+      "currency": "USD",
+      "icon": "wallet",
+      "note": "Excel: Efectivo"
+    },
+    {
+      "sheet": "Dolares - Rafael",
+      "mode": "balance",
+      "name": "Dólares Rafael",
+      "type": "depository",
+      "subtype": "checking",
+      "currency": "USD",
+      "icon": "bank",
+      "note": "Excel: Dolares - Rafael"
+    },
+    {
+      "sheet": "Pesos Rafael",
+      "mode": "balance",
+      "name": "Pesos Rafael",
+      "type": "depository",
+      "subtype": "checking",
+      "currency": "UYU",
+      "icon": "bank",
+      "note": "Excel: Pesos Rafael (UYU convertido a USD)"
+    },
+    {
+      "sheet": "Mercado Pago",
+      "mode": "balance",
+      "name": "Mercado Pago",
+      "type": "depository",
+      "subtype": "prepaid",
+      "currency": "UYU",
+      "icon": "wallet",
+      "note": "Excel: Mercado Pago (UYU convertido a USD)"
+    },
+    {
+      "sheet": "Dolares - Odaysy",
+      "mode": "balance",
+      "name": "Dólares Odaysy",
+      "type": "depository",
+      "subtype": "checking",
+      "currency": "USD",
+      "icon": "bank",
+      "note": "Excel: Dolares - Odaysy"
+    },
+    {
+      "sheet": "Pesos Odaysy",
+      "mode": "balance",
+      "name": "Pesos Odaysy",
+      "type": "depository",
+      "subtype": "checking",
+      "currency": "UYU",
+      "icon": "bank",
+      "note": "Excel: Pesos Odaysy (UYU convertido a USD)"
+    },
+    {
+      "sheet": "Credito-Santander",
+      "mode": "balance",
+      "name": "Crédito Santander",
+      "type": "credit",
+      "subtype": "credit card",
+      "currency": "UYU",
+      "icon": "card",
+      "note": "Excel: Credito-Santander (UYU convertido a USD)"
+    },
+    {
+      "sheet": "Credito-BBVA",
+      "mode": "balance",
+      "name": "Crédito BBVA",
+      "type": "credit",
+      "subtype": "credit card",
+      "currency": "UYU",
+      "icon": "card",
+      "note": "Excel: Credito-BBVA (UYU convertido a USD)"
+    },
+    {
+      "sheet": "Fifth Third",
+      "mode": "balance",
+      "name": "Fifth Third",
+      "type": "depository",
+      "subtype": "checking",
+      "currency": "USD",
+      "icon": "bank",
+      "note": "Excel: Fifth Third"
+    },
+    {
+      "sheet": "Capital One",
+      "mode": "balance",
+      "name": "Capital One",
+      "type": "credit",
+      "subtype": "credit card",
+      "currency": "USD",
+      "icon": "card",
+      "note": "Excel: Capital One"
+    },
+    {
+      "sheet": "Inversiones",
+      "mode": "cumulative",
+      "name": "Inversión {nombre}",
+      "type": "investment",
+      "subtype": "brokerage",
+      "currency": "USD",
+      "icon": "investment",
+      "note": "Aportes acumulados a {nombre} (Excel: Inversiones)",
+      "overrides": {
+        "Binance": {"subtype": "crypto exchange", "icon": "crypto"}
+      }
+    }
+  ]
+}
