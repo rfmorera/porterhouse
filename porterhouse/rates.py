@@ -14,7 +14,7 @@ from porterhouse.dtos import RateQuote
 
 BCU_URL = "https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/awsbcucotizaciones"
 BCU_USD_BILLETE = 2225
-BCU_GRUPO = int(os.environ.get("BCU_GRUPO", "0"))
+BCU_GRUPOS = [int(value) for value in os.environ.get("BCU_GRUPOS", "0,2,1").split(",")]
 BCU_LOOKBACK_DAYS = 10
 CURRENCY_API_URL = (
     "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{day}/v1/currencies/usd.json"
@@ -134,22 +134,25 @@ def _number(text: str) -> Optional[float]:
 
 
 def bcu_rate(day: str, post: Callable = requests.post) -> Optional[RateQuote]:
-    response = bcu_request(day, post)
-    response.raise_for_status()
-    quotes = parse_bcu_response(response.text)
-    usable = [quote for quote in quotes if quote.quote_day <= day]
-    if not usable:
-        raise RateUnavailable(bcu_failure(response.text))
-    best = max(usable, key=lambda quote: quote.quote_day)
-    return RateQuote(rate=best.rate, source="bcu", quote_day=best.quote_day)
+    failures = []
+    for grupo in BCU_GRUPOS:
+        response = bcu_request(day, post, grupo)
+        response.raise_for_status()
+        quotes = parse_bcu_response(response.text)
+        usable = [quote for quote in quotes if quote.quote_day <= day]
+        if usable:
+            best = max(usable, key=lambda quote: quote.quote_day)
+            return RateQuote(rate=best.rate, source="bcu", quote_day=best.quote_day)
+        failures.append(f"grupo {grupo}: {bcu_failure(response.text)}")
+    raise RateUnavailable("; ".join(failures))
 
 
-def bcu_request(day: str, post: Callable = requests.post):
+def bcu_request(day: str, post: Callable = requests.post, grupo: int = 0):
     target = date.fromisoformat(day)
     since = target - timedelta(days=BCU_LOOKBACK_DAYS)
     return post(
         BCU_URL,
-        data=bcu_envelope(since.isoformat(), target.isoformat()).encode("utf-8"),
+        data=bcu_envelope(since.isoformat(), target.isoformat(), grupo).encode("utf-8"),
         headers={
             "Content-Type": "text/xml; charset=utf-8",
             "SOAPAction": '"Cotizaaction/AWSBCUCOTIZACIONES.Execute"',
@@ -162,10 +165,14 @@ def bcu_failure(xml: str) -> str:
     status = _tag(xml, "status")
     code = _tag(xml, "codigoerror")
     message = _tag(xml, "mensaje")
-    if message or code:
-        return f"BCU status={status or '?'} codigoerror={code or '?'} mensaje={message or '(vacío)'}"
-    snippet = re.sub(r"\s+", " ", xml)[:200]
-    return f"BCU sin datos para la moneda {BCU_USD_BILLETE}; respuesta: {snippet}"
+    blocks = len(re.findall(r"datoscotizaciones\.dato>", xml)) // 2
+    flat = re.sub(r"\s+", " ", xml)
+    start = flat.find("datoscotizaciones")
+    snippet = flat[start : start + 300] if start >= 0 else flat[:300]
+    return (
+        f"status={status or '?'} codigoerror={code or '?'} mensaje={message or '(vacío)'} "
+        f"registros={blocks} respuesta=«{snippet}»"
+    )
 
 
 def parse_bcu_response(xml: str) -> list:
@@ -202,14 +209,14 @@ def currency_api_rate(day: str, get: Callable = requests.get) -> Optional[RateQu
     return None
 
 
-def bcu_envelope(since: str, until: str) -> str:
+def bcu_envelope(since: str, until: str, grupo: int = 0) -> str:
     return (
         '<?xml version="1.0" encoding="utf-8"?>'
         '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cot="Cotiza">'
         "<soapenv:Header/><soapenv:Body><cot:wsbcucotizaciones.Execute><cot:Entrada>"
         f"<cot:Moneda><cot:item>{BCU_USD_BILLETE}</cot:item></cot:Moneda>"
         f"<cot:FechaDesde>{since}</cot:FechaDesde><cot:FechaHasta>{until}</cot:FechaHasta>"
-        f"<cot:Grupo>{BCU_GRUPO}</cot:Grupo>"
+        f"<cot:Grupo>{grupo}</cot:Grupo>"
         "</cot:Entrada></cot:wsbcucotizaciones.Execute></soapenv:Body></soapenv:Envelope>"
     )
 

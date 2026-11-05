@@ -84,8 +84,8 @@ datos.
   python -m porterhouse rate 2023-02-14 --raw
   ```
 
-  `--raw` imprime el pedido SOAP y la respuesta completa del BCU. `BCU_GRUPO`
-  (default `0`, todos los grupos) cambia el filtro de grupo del web service.
+  `--raw` imprime el pedido SOAP y la respuesta completa del BCU. `BCU_GRUPOS`
+  (default `0,2,1`) lista los grupos del web service que se prueban en orden.
 - **Supuestos** que conviene revisar en `sheets.json`: `Efectivo` y
   `Prestamos` se tratan como USD; `Mercado Pago` como UYU.
 

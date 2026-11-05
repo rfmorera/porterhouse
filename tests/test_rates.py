@@ -54,8 +54,24 @@ def test_bcu_uses_the_latest_quote_on_or_before_the_day():
 
     assert quote.quote_day == "2024-05-23"
     assert quote.rate == 38.4
+    assert len(calls) == 1
     assert "<cot:FechaDesde>2024-05-15</cot:FechaDesde>" in calls[0]
     assert "<cot:FechaHasta>2024-05-25</cot:FechaHasta>" in calls[0]
+    assert "<cot:Grupo>0</cot:Grupo>" in calls[0]
+
+
+def test_bcu_tries_the_next_group_when_one_is_empty():
+    calls = []
+
+    def post(url, data, headers, timeout):
+        calls.append(data.decode())
+        empty = "<cot:Grupo>0</cot:Grupo>" in data.decode()
+        return _Response(BCU_ERROR_XML.replace("<status>0</status>", "<status>1</status>") if empty else BCU_XML)
+
+    quote = bcu_rate("2024-05-25", post=post)
+
+    assert quote.quote_day == "2024-05-23"
+    assert "<cot:Grupo>2</cot:Grupo>" in calls[1]
 
 
 def test_rate_service_caches_and_falls_back(tmp_path):
@@ -102,8 +118,9 @@ def test_bcu_error_message_is_surfaced():
     with pytest.raises(RateUnavailable) as caught:
         bcu_rate("2024-05-25", post=lambda *args, **kwargs: _Response(BCU_ERROR_XML))
 
-    assert "codigoerror=2" in str(caught.value)
+    assert "grupo 0: status=0 codigoerror=2" in str(caught.value)
     assert "Rango de fechas inválido" in str(caught.value)
+    assert "registros=0" in str(caught.value)
 
 
 def test_other_currencies_in_the_bcu_answer_are_ignored():

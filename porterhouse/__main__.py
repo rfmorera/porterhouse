@@ -54,6 +54,7 @@ def diagnose_rate(day: str, raw: bool) -> int:
     from datetime import date, timedelta
 
     from porterhouse.rates import (
+        BCU_GRUPOS,
         BCU_LOOKBACK_DAYS,
         BCU_URL,
         RateUnavailable,
@@ -66,15 +67,17 @@ def diagnose_rate(day: str, raw: bool) -> int:
 
     if raw:
         since = (date.fromisoformat(day) - timedelta(days=BCU_LOOKBACK_DAYS)).isoformat()
-        print(f"POST {BCU_URL}")
-        print(bcu_envelope(since, day))
-        try:
-            response = bcu_request(day)
-        except Exception as error:
-            print(f"[error] {type(error).__name__}: {error}")
-            return 1
-        print(f"HTTP {response.status_code}")
-        print(response.text)
+        for grupo in BCU_GRUPOS:
+            print(f"POST {BCU_URL}")
+            print(bcu_envelope(since, day, grupo))
+            try:
+                response = bcu_request(day, grupo=grupo)
+            except Exception as error:
+                print(f"[error] {type(error).__name__}: {error}")
+                return 1
+            print(f"HTTP {response.status_code}")
+            print(response.text)
+            print()
         return 0
     status = 0
     for name, fetcher in (
