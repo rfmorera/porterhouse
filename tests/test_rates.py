@@ -3,7 +3,14 @@ import json
 import pytest
 
 from porterhouse.dtos import RateQuote
-from porterhouse.rates import RateService, RateUnavailable, bcu_rate, parse_bcu_response
+from porterhouse.rates import (
+    RateService,
+    RateUnavailable,
+    bcu_rate,
+    google_finance_rate,
+    parse_bcu_response,
+    parse_google_finance_csv,
+)
 
 BCU_XML = """<?xml version="1.0"?>
 <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
@@ -106,3 +113,41 @@ def test_other_currencies_in_the_bcu_answer_are_ignored():
     )
 
     assert [quote.quote_day for quote in parse_bcu_response(xml)] == ["2024-05-22"]
+
+
+GOOGLE_CSV = """Date,Close
+1/3/2022 23:58:00,44.63
+1/4/2022 23:58:00,44.55
+2022-01-07 23:58:00,"44,41"
+"""
+
+
+def test_google_finance_csv_is_parsed_with_mixed_date_and_number_formats():
+    assert parse_google_finance_csv(GOOGLE_CSV) == {
+        "2022-01-03": 44.63,
+        "2022-01-04": 44.55,
+        "2022-01-07": 44.41,
+    }
+
+
+def test_google_finance_uses_latest_day_on_or_before_and_downloads_once():
+    calls = []
+
+    def get(url, timeout):
+        calls.append(url)
+        return _Response(GOOGLE_CSV)
+
+    url = "https://docs.google.com/test/export?format=csv"
+    first = google_finance_rate("2022-01-06", get=get, url=url)
+    second = google_finance_rate("2022-01-09", get=get, url=url)
+
+    assert (first.quote_day, first.rate, first.source) == ("2022-01-04", 44.55, "google-finance")
+    assert second.quote_day == "2022-01-07"
+    assert calls == [url]
+    with pytest.raises(RateUnavailable):
+        google_finance_rate("2022-03-01", get=get, url=url)
+
+
+def test_google_finance_needs_a_url():
+    with pytest.raises(RateUnavailable):
+        google_finance_rate("2022-01-06", get=lambda *a, **k: None, url="")

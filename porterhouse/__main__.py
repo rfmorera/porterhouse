@@ -61,6 +61,7 @@ def diagnose_rate(day: str, raw: bool) -> int:
         bcu_rate,
         bcu_request,
         currency_api_rate,
+        google_finance_rate,
     )
 
     if raw:
@@ -76,7 +77,11 @@ def diagnose_rate(day: str, raw: bool) -> int:
         print(response.text)
         return 0
     status = 0
-    for name, fetcher in (("bcu", bcu_rate), ("currency-api", currency_api_rate)):
+    for name, fetcher in (
+        ("google-finance", google_finance_rate),
+        ("bcu", bcu_rate),
+        ("currency-api", currency_api_rate),
+    ):
         try:
             quote = fetcher(day)
         except RateUnavailable as error:

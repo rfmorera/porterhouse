@@ -1,8 +1,10 @@
+import csv
+import io
 import json
 import os
 import re
 import tempfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -19,7 +21,11 @@ CURRENCY_API_URL = (
 )
 CURRENCY_API_LOOKBACK_DAYS = 4
 CURRENCY_API_FIRST_DAY = "2024-03-02"
+GOOGLE_RATES_CSV_URL = os.environ.get("GOOGLE_RATES_CSV_URL", "").strip()
+GOOGLE_LOOKBACK_DAYS = 7
+GOOGLE_DATE_FORMATS = ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%m/%d/%y", "%d/%m/%y")
 TIMEOUT = 20
+_google_series = {}
 
 
 class RateUnavailable(Exception):
@@ -35,7 +41,11 @@ class RateService:
         override: Optional[float] = None,
     ):
         self.cache_path = Path(cache_path)
-        self.fetchers = fetchers if fetchers is not None else [bcu_rate, currency_api_rate]
+        self.fetchers = (
+            fetchers
+            if fetchers is not None
+            else [google_finance_rate, bcu_rate, currency_api_rate]
+        )
         self.override = override
         self.cache = _load_cache(self.cache_path)
         self.fetched = 0
@@ -65,6 +75,62 @@ class RateService:
     def save(self):
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write(self.cache_path, self.cache)
+
+
+def google_finance_rate(
+    day: str, get: Callable = requests.get, url: Optional[str] = None
+) -> Optional[RateQuote]:
+    url = url if url is not None else GOOGLE_RATES_CSV_URL
+    if not url:
+        raise RateUnavailable("GOOGLE_RATES_CSV_URL no configurado")
+    series = _google_series.get(url)
+    if series is None:
+        response = get(url, timeout=TIMEOUT)
+        response.raise_for_status()
+        series = parse_google_finance_csv(response.text)
+        if not series:
+            raise RateUnavailable("la hoja publicada no tiene filas Date/Close")
+        _google_series[url] = series
+    floor = (date.fromisoformat(day) - timedelta(days=GOOGLE_LOOKBACK_DAYS)).isoformat()
+    usable = [quote_day for quote_day in series if floor <= quote_day <= day]
+    if not usable:
+        raise RateUnavailable(f"la hoja no tiene cotización entre {floor} y {day}")
+    best = max(usable)
+    return RateQuote(rate=series[best], source="google-finance", quote_day=best)
+
+
+def parse_google_finance_csv(text: str) -> dict:
+    series = {}
+    for row in csv.reader(io.StringIO(text)):
+        if len(row) < 2:
+            continue
+        quote_day = _google_day(row[0])
+        rate = _number(row[1])
+        if quote_day and rate and rate > 0:
+            series[quote_day] = round(rate, 4)
+    return series
+
+
+def _google_day(text: str) -> Optional[str]:
+    cleaned = text.strip().split(" ")[0] if text else ""
+    for pattern in GOOGLE_DATE_FORMATS:
+        try:
+            return datetime.strptime(cleaned, pattern).date().isoformat()
+        except ValueError:
+            continue
+    return None
+
+
+def _number(text: str) -> Optional[float]:
+    cleaned = (text or "").strip().replace(" ", "")
+    if "," in cleaned and "." not in cleaned:
+        cleaned = cleaned.replace(",", ".")
+    elif "," in cleaned:
+        cleaned = cleaned.replace(",", "")
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None
 
 
 def bcu_rate(day: str, post: Callable = requests.post) -> Optional[RateQuote]:

@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from porterhouse.config import ENVIRONMENTS, ROOT, load_settings, resolve_environment
 from porterhouse.ledger import Ledger
+from porterhouse.rates import GOOGLE_RATES_CSV_URL
 from porterhouse.runner import MissingToken, run_sync
 
 app = FastAPI(title="porterhouse")
@@ -38,6 +39,7 @@ def status():
         "default_environment": settings.environment,
         "environments": environments,
         "has_env_token": settings.has_token,
+        "has_google_rates": bool(GOOGLE_RATES_CSV_URL),
     }
 
 

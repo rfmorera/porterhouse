@@ -114,7 +114,7 @@
       <input id="token" name="token" type="password" autocomplete="off" placeholder="eyJhbGciOi...">
     </div>
     <div class="field">
-      <label for="rate">Cotización fija UYU por USD <span class="hint">(opcional; si está vacío se consulta BCU por fecha)</span></label>
+      <label for="rate">Cotización fija UYU por USD <span class="hint" id="rate-hint">(opcional; si está vacío se usa la cotización de cada fecha)</span></label>
       <input id="rate" name="rate" type="text" inputmode="decimal" placeholder="ej. 40.25">
     </div>
     <div class="row">
@@ -153,6 +153,9 @@
     environments = info.environments;
     environment.value = info.default_environment;
     showEnvironment();
+    document.getElementById("rate-hint").textContent = info.has_google_rates
+      ? "(opcional; si está vacío se usa Google Finance por fecha, con BCU de respaldo)"
+      : "(opcional; falta GOOGLE_RATES_CSV_URL, se intentará BCU por fecha)";
     document.getElementById("token-hint").textContent = info.has_env_token
       ? "(hay MONDAYCALL_JWT en el entorno; dejá vacío para usarlo)"
       : "(no hay MONDAYCALL_JWT en el entorno; pegalo acá)";

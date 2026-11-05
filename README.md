@@ -23,6 +23,7 @@ Variables de entorno (`.env` o el entorno):
 | Variable | Uso |
 | --- | --- |
 | `MONDAYCALL_JWT` | Token del usuario. Se envía como `X-Authorization: Bearer <jwt>`. |
+| `GOOGLE_RATES_CSV_URL` | URL CSV de una hoja de Google con `GOOGLEFINANCE` publicada en la web (ver "Cotización UYU/USD"). |
 | `MONDAYCALL_ENV` | Entorno por defecto: `dev` (`https://api-dev.moneycall.io`) o `prod` (`https://api.moneycall.io`). Default `dev`. |
 | `MONDAYCALL_API_URL` | Opcional. Si está definido reemplaza la URL del entorno elegido (útil para una API local). |
 | `PORTERHOUSE_LEDGER_DIR` | Carpeta de los registros de lo enviado. Default `data`; dentro hay un `ledger.<entorno>.json` por entorno. |
@@ -73,10 +74,10 @@ datos.
   día. Cada nombre es un ítem distinto (`Inversión Gletir`, `Préstamo Ruben`).
   `overrides` permite cambiar tipo o ícono para un nombre (Binance → crypto).
 - **Moneda**: las hojas marcadas `UYU` se convierten a USD con la cotización
-  del día del registro (dólar billete BCU, promedio compra/venta; si BCU no
-  responde se intenta `currency-api` de jsdelivr). Las cotizaciones se cachean
-  en `data/rates.json`, que se puede editar a mano. `--rate` fuerza una
-  cotización fija. Para diagnosticar una fecha:
+  del día del registro (o del último día con dato dentro de la semana previa).
+  Ver "Cotización UYU/USD". Las cotizaciones se cachean en `data/rates.json`,
+  que se puede editar a mano. `--rate` fuerza una cotización fija. Para
+  diagnosticar una fecha:
 
   ```bash
   python -m porterhouse rate 2023-02-14
@@ -95,6 +96,23 @@ acepta montos negativos.
 
 Las fechas como texto se interpretan primero como `dd/mm/aaaa` y, si eso no es
 posible, como `mm/dd/aaaa`.
+
+## Cotización UYU/USD
+
+Fuentes, en orden; la primera que responde gana y el valor queda cacheado:
+
+1. **Google Finance**, la misma serie que muestra el gráfico de Google. Google
+   no tiene API pública, así que se toma vía una hoja de cálculo publicada:
+   1. Creá una hoja de Google nueva y en `A1` poné
+      `=GOOGLEFINANCE("CURRENCY:USDUYU";"close";DATE(2022;1;1);TODAY()+1;"DAILY")`
+      (con `,` en vez de `;` si tu hoja está en inglés). Se llena con una fila
+      por día: `Date`, `Close`.
+   2. Archivo → Compartir → Publicar en la web → elegí esa hoja y el formato
+      **Valores separados por comas (.csv)** → Publicar, y copiá el enlace.
+   3. Ponelo en `GOOGLE_RATES_CSV_URL` (en `.env`). Google refresca la hoja
+      publicada sola, así que las fechas nuevas aparecen sin tocar nada.
+2. **BCU**, web service de cotizaciones (dólar billete, promedio compra/venta).
+3. **currency-api** de jsdelivr, solo desde 2024-03-02.
 
 ## Qué se envía
 
