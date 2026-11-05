@@ -135,6 +135,12 @@ Por cada ítem con revisiones pendientes:
 Una revisión se considera pendiente si su fecha no está en el ledger o si el
 monto en USD cambió. Las filas borradas del Excel no se eliminan de la API.
 
+`--resend` (o la casilla "Reenviar todo" en la página) manda todas las
+revisiones otra vez, reutilizando los ids del ledger. Sirve cuando la API
+recibió las revisiones sin poder guardarlas con su fecha (por ejemplo, antes de
+desplegar el soporte de `date`): el servidor ignora las que ya tiene iguales y
+agrega las que faltan.
+
 ## Tests
 
 ```bash

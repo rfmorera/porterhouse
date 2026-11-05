@@ -19,11 +19,19 @@ ABORT_STATUSES = {401, 403}
 
 class SyncService:
 
-    def __init__(self, specs: list, rates, ledger, log: Callable[[str], None]):
+    def __init__(
+        self,
+        specs: list,
+        rates,
+        ledger,
+        log: Callable[[str], None],
+        resend: bool = False,
+    ):
         self.specs = specs
         self.rates = rates
         self.ledger = ledger
         self.log = log
+        self.resend = resend
 
     def plan(self, reader) -> SyncPlan:
         warnings = []
@@ -182,7 +190,9 @@ class SyncService:
         pending = []
         for balance in sorted(item.balances, key=lambda entry: entry.day):
             previous = existing.revisions.get(balance.day) if existing else None
-            if previous is None:
+            if self.resend and previous is not None:
+                pending.append(PendingRevision(balance, "reenvío"))
+            elif previous is None:
                 pending.append(PendingRevision(balance, "nueva"))
             elif abs(previous.amount - balance.amount_usd) >= AMOUNT_TOLERANCE:
                 pending.append(

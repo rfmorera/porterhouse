@@ -50,6 +50,7 @@ async def sync(
     dry_run: bool = Form(False),
     rate: Optional[str] = Form(None),
     environment: str = Form(""),
+    resend: bool = Form(False),
 ):
     try:
         environment = resolve_environment(environment or load_settings().environment)
@@ -74,6 +75,7 @@ async def sync(
                 dry_run=dry_run,
                 rate_override=rate_override,
                 environment=environment,
+                resend=resend,
             )
         except MissingToken as error:
             lines.put(f"[error] {error}")

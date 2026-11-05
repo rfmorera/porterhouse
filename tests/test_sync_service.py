@@ -143,6 +143,20 @@ def test_ignored_sheets_are_not_mapped(tmp_path, workbook_path, specs_path):
     assert not any("Capital One" in line and "aviso" in line for line in lines)
 
 
+def test_resend_sends_everything_again_with_the_same_ids(tmp_path, workbook_path, specs_path, today):
+    lines = []
+    service, ledger = _service(tmp_path, specs_path, lines.append)
+    client = FakeClient()
+    service.apply(service.plan(WorkbookReader(workbook_path, today)), client, dry_run=False)
+    again = SyncService(load_sheet_specs(specs_path), service.rates, ledger, lines.append, resend=True)
+
+    report = again.apply(again.plan(WorkbookReader(workbook_path, today)), client, dry_run=False)
+
+    assert report.items_created == 0
+    assert report.revisions_sent == 8
+    assert {item_id for item_id, _ in client.updated} == {"id-1", "id-2", "id-3", "id-4"}
+
+
 def test_dry_run_sends_nothing(tmp_path, workbook_path, specs_path, today):
     lines = []
     service, _ledger = _service(tmp_path, specs_path, lines.append)

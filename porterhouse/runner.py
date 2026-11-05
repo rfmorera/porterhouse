@@ -25,6 +25,7 @@ def run_sync(
     rate_override: Optional[float] = None,
     today: Optional[date] = None,
     environment: str = "",
+    resend: bool = False,
 ) -> SyncReport:
     environment = resolve_environment(environment or settings.environment)
     api_url = settings.api_url_for(environment)
@@ -48,7 +49,9 @@ def run_sync(
     ledger = Ledger(ledger_path)
     log(f"Registro local: {ledger_path.name} ({len(ledger.items)} ítem(s) ya enviados)")
     rates = RateService(settings.rates_path, override=rate_override)
-    service = SyncService(specs, rates, ledger, log)
+    if resend:
+        log("Reenvío: se mandan todas las revisiones aunque el registro local las tenga como enviadas")
+    service = SyncService(specs, rates, ledger, log, resend=resend)
     plan = service.plan(reader)
     if rates.fetched:
         log(f"Cotizaciones UYU/USD descargadas: {rates.fetched} (guardadas en {settings.rates_path.name})")

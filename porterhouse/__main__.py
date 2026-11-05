@@ -16,6 +16,7 @@ def main(argv=None) -> int:
     sync.add_argument("--token", default="")
     sync.add_argument("--env", choices=sorted(ENVIRONMENTS), default=None, help="dev o prod (default: MONDAYCALL_ENV o dev)")
     sync.add_argument("--rate", type=float, default=None, help="Fuerza una cotización UYU por USD")
+    sync.add_argument("--resend", action="store_true", help="Reenvía todas las revisiones, aunque el registro local las tenga como enviadas")
 
     rate = commands.add_parser("rate", help="Diagnostica la cotización UYU/USD de una fecha")
     rate.add_argument("day", help="Fecha aaaa-mm-dd")
@@ -43,6 +44,7 @@ def main(argv=None) -> int:
             dry_run=args.dry_run,
             rate_override=args.rate,
             environment=args.env or "",
+            resend=args.resend,
         )
     except MissingToken as error:
         print(f"[error] {error}", file=sys.stderr)

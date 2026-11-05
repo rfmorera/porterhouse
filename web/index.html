@@ -119,6 +119,7 @@
     </div>
     <div class="row">
       <label class="check"><input id="dry" name="dry_run" type="checkbox" checked> Solo simular (no envía nada)</label>
+      <label class="check"><input id="resend" name="resend" type="checkbox"> Reenviar todo</label>
       <button id="send" type="submit">Procesar</button>
       <span class="status" id="status"></span>
     </div>
@@ -179,6 +180,7 @@
     }
     const data = new FormData(form);
     data.set("dry_run", simulate ? "true" : "false");
+    data.set("resend", document.getElementById("resend").checked ? "true" : "false");
     log.textContent = "";
     send.disabled = true;
     status.textContent = "Procesando…";
