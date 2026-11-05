@@ -83,3 +83,26 @@ def test_override_skips_every_source(tmp_path):
     service = RateService(tmp_path / "rates.json", fetchers=[], override=41.5)
 
     assert service.uyu_per_usd("2024-05-23").rate == 41.5
+
+
+BCU_ERROR_XML = """<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body>
+<wsbcucotizacionesExecuteResponse xmlns="Cotiza"><Salida>
+<respuestastatus><status>0</status><codigoerror>2</codigoerror><mensaje>Rango de fechas inválido</mensaje></respuestastatus>
+<datoscotizaciones/></Salida></wsbcucotizacionesExecuteResponse></SOAP-ENV:Body></SOAP-ENV:Envelope>"""
+
+
+def test_bcu_error_message_is_surfaced():
+    with pytest.raises(RateUnavailable) as caught:
+        bcu_rate("2024-05-25", post=lambda *args, **kwargs: _Response(BCU_ERROR_XML))
+
+    assert "codigoerror=2" in str(caught.value)
+    assert "Rango de fechas inválido" in str(caught.value)
+
+
+def test_other_currencies_in_the_bcu_answer_are_ignored():
+    xml = BCU_XML.replace(
+        "<Fecha>2024-05-23</Fecha><Moneda>2225</Moneda>",
+        "<Fecha>2024-05-23</Fecha><Moneda>1111</Moneda>",
+    )
+
+    assert [quote.quote_day for quote in parse_bcu_response(xml)] == ["2024-05-22"]

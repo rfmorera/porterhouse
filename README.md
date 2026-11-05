@@ -76,7 +76,15 @@ datos.
   del día del registro (dólar billete BCU, promedio compra/venta; si BCU no
   responde se intenta `currency-api` de jsdelivr). Las cotizaciones se cachean
   en `data/rates.json`, que se puede editar a mano. `--rate` fuerza una
-  cotización fija.
+  cotización fija. Para diagnosticar una fecha:
+
+  ```bash
+  python -m porterhouse rate 2023-02-14
+  python -m porterhouse rate 2023-02-14 --raw
+  ```
+
+  `--raw` imprime el pedido SOAP y la respuesta completa del BCU. `BCU_GRUPO`
+  (default `0`, todos los grupos) cambia el filtro de grupo del web service.
 - **Supuestos** que conviene revisar en `sheets.json`: `Efectivo` y
   `Prestamos` se tratan como USD; `Mercado Pago` como UYU.
 

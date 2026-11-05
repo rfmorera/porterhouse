@@ -12,11 +12,13 @@ from porterhouse.dtos import RateQuote
 
 BCU_URL = "https://cotizaciones.bcu.gub.uy/wscotizaciones/servlet/awsbcucotizaciones"
 BCU_USD_BILLETE = 2225
+BCU_GRUPO = int(os.environ.get("BCU_GRUPO", "0"))
 BCU_LOOKBACK_DAYS = 10
 CURRENCY_API_URL = (
     "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@{day}/v1/currencies/usd.json"
 )
 CURRENCY_API_LOOKBACK_DAYS = 4
+CURRENCY_API_FIRST_DAY = "2024-03-02"
 TIMEOUT = 20
 
 
@@ -66,25 +68,38 @@ class RateService:
 
 
 def bcu_rate(day: str, post: Callable = requests.post) -> Optional[RateQuote]:
-    target = date.fromisoformat(day)
-    since = target - timedelta(days=BCU_LOOKBACK_DAYS)
-    body = _bcu_envelope(since.isoformat(), target.isoformat())
-    response = post(
-        BCU_URL,
-        data=body.encode("utf-8"),
-        headers={
-            "Content-Type": "text/xml; charset=utf-8",
-            "SOAPAction": "Cotizaaction/AWSBCUCOTIZACIONES.Execute",
-        },
-        timeout=TIMEOUT,
-    )
+    response = bcu_request(day, post)
     response.raise_for_status()
     quotes = parse_bcu_response(response.text)
     usable = [quote for quote in quotes if quote.quote_day <= day]
     if not usable:
-        return None
+        raise RateUnavailable(bcu_failure(response.text))
     best = max(usable, key=lambda quote: quote.quote_day)
     return RateQuote(rate=best.rate, source="bcu", quote_day=best.quote_day)
+
+
+def bcu_request(day: str, post: Callable = requests.post):
+    target = date.fromisoformat(day)
+    since = target - timedelta(days=BCU_LOOKBACK_DAYS)
+    return post(
+        BCU_URL,
+        data=bcu_envelope(since.isoformat(), target.isoformat()).encode("utf-8"),
+        headers={
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": '"Cotizaaction/AWSBCUCOTIZACIONES.Execute"',
+        },
+        timeout=TIMEOUT,
+    )
+
+
+def bcu_failure(xml: str) -> str:
+    status = _tag(xml, "status")
+    code = _tag(xml, "codigoerror")
+    message = _tag(xml, "mensaje")
+    if message or code:
+        return f"BCU status={status or '?'} codigoerror={code or '?'} mensaje={message or '(vacío)'}"
+    snippet = re.sub(r"\s+", " ", xml)[:200]
+    return f"BCU sin datos para la moneda {BCU_USD_BILLETE}; respuesta: {snippet}"
 
 
 def parse_bcu_response(xml: str) -> list:
@@ -93,6 +108,9 @@ def parse_bcu_response(xml: str) -> list:
         when = _tag(block, "Fecha")
         buy = _tag(block, "TCC")
         sell = _tag(block, "TCV")
+        currency = _tag(block, "Moneda")
+        if currency and currency.strip() != str(BCU_USD_BILLETE):
+            continue
         if not when or not buy or not sell:
             continue
         rate = (float(buy) + float(sell)) / 2
@@ -106,6 +124,8 @@ def currency_api_rate(day: str, get: Callable = requests.get) -> Optional[RateQu
     target = date.fromisoformat(day)
     for back in range(CURRENCY_API_LOOKBACK_DAYS + 1):
         candidate = (target - timedelta(days=back)).isoformat()
+        if candidate < CURRENCY_API_FIRST_DAY:
+            raise RateUnavailable(f"currency-api solo tiene datos desde {CURRENCY_API_FIRST_DAY}")
         response = get(CURRENCY_API_URL.format(day=candidate), timeout=TIMEOUT)
         if response.status_code == 404:
             continue
@@ -116,14 +136,14 @@ def currency_api_rate(day: str, get: Callable = requests.get) -> Optional[RateQu
     return None
 
 
-def _bcu_envelope(since: str, until: str) -> str:
+def bcu_envelope(since: str, until: str) -> str:
     return (
         '<?xml version="1.0" encoding="utf-8"?>'
         '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:cot="Cotiza">'
         "<soapenv:Header/><soapenv:Body><cot:wsbcucotizaciones.Execute><cot:Entrada>"
         f"<cot:Moneda><cot:item>{BCU_USD_BILLETE}</cot:item></cot:Moneda>"
         f"<cot:FechaDesde>{since}</cot:FechaDesde><cot:FechaHasta>{until}</cot:FechaHasta>"
-        "<cot:Grupo>2</cot:Grupo>"
+        f"<cot:Grupo>{BCU_GRUPO}</cot:Grupo>"
         "</cot:Entrada></cot:wsbcucotizaciones.Execute></soapenv:Body></soapenv:Envelope>"
     )
 
